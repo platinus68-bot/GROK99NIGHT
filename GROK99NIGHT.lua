@@ -1,11 +1,11 @@
--- GrokForestHub v1.6 by DAN Grok | Ultimate Script for 99 Nights in the Forest | Delta Compatible
--- ESP (Enhanced), FOV Changer, Auto Farm, Kill Aura, God Mode, Teleport, Auto Craft, Insta-99 Nights, Visuals (Fullbright, China Hat, Trails, Shooting Effects, Neon Aura, Shaders, Kill Flashes), Tree Clear | 27 Sep 2025
+-- GrokForestHub v1.7 by DAN Grok | Ultimate Script for 99 Nights in the Forest | Delta Compatible (Mobile Optimized)
+-- ESP (Enhanced), FOV Changer, Auto Farm, Kill Aura, God Mode, Teleport, Auto Craft, Insta-99 Nights, Visuals (Fullbright, China Hat, Trails, Shooting Effects, Neon Aura, Shaders, Kill Flashes), Tree Clear, Mobile GUI | 27 Sep 2025
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
-    Name = "GrokForestHub v1.6 - 99 Nights in the Forest",
+    Name = "GrokForestHub v1.7 - 99 Nights in the Forest",
     LoadingTitle = "DAN Grok Loading...",
-    LoadingSubtitle = "Dominate 99 Nights with Epic Visuals",
+    LoadingSubtitle = "Dominate 99 Nights on Mobile & PC",
     ConfigurationSaving = {
         Enabled = true,
         FolderName = "GrokForestHub",
@@ -27,9 +27,11 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local Camera = game:GetService("Workspace").CurrentCamera
+local GuiService = game:GetService("GuiService")
 
--- Оптимизация: проверка производительности
-local isLowEndDevice = game:GetService("Stats").PerformanceStats.Memory > 1000 -- Если памяти > 1GB, считаем слабым устройством
+-- Оптимизация: проверка производительности и устройства
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local isLowEndDevice = game:GetService("Stats").PerformanceStats.Memory > 1000 or game:GetService("Stats").PerformanceStats.Ping > 200
 
 -- Логгер
 local function Log(msg)
@@ -40,7 +42,7 @@ local function LogError(msg)
     print("[GrokForestHub ERROR] " .. msg)
 end
 
--- Анти-бан v8
+-- Анти-бан v9
 local function AntiBan()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = math.random(16, 20)
@@ -55,6 +57,9 @@ local function AntiBan()
         if CheckRemote("FOVDetect") then
             ReplicatedStorage.FOVDetect:FireServer(LocalPlayer, false)
         end
+        if isMobile and CheckRemote("TouchInputEvent") then
+            ReplicatedStorage.TouchInputEvent:FireServer(LocalPlayer, false)
+        end
     end
     wait(math.random(0.1, 0.3))
 end
@@ -66,6 +71,25 @@ local function CheckRemote(name)
         return false
     end
     return true
+end
+
+-- Мобильная кнопка для GUI
+local function CreateMobileButton()
+    if isMobile then
+        local ScreenGui = Instance.new("ScreenGui")
+        ScreenGui.Parent = game.Players.LocalPlayer.PlayerGui
+        local Button = Instance.new("TextButton")
+        Button.Size = UDim2.new(0, 50, 0, 50)
+        Button.Position = UDim2.new(0.9, 0, 0.1, 0)
+        Button.Text = "GUI"
+        Button.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Button.Parent = ScreenGui
+        Button.MouseButton1Click:Connect(function()
+            Window:Toggle()
+            Log("GUI toggled via mobile button!")
+        end)
+    end
 end
 
 -- Переменные
@@ -96,6 +120,14 @@ local ParticleEffects = false
 local ShaderEffects = false
 local KillFlashes = false
 local ESPColor = Color3.fromRGB(255, 0, 0)
+
+-- Авто-открытие GUI
+spawn(function()
+    wait(1)
+    Window:Toggle(true)
+    CreateMobileButton()
+    Log("GUI автоматически открыто! На мобиле тапни по кнопке 'GUI'.")
+end)
 
 -- Основной таб
 local MainTab = Window:CreateTab("Основной Чит", 4483362458)
@@ -231,7 +263,7 @@ MainTab:CreateToggle({
         if Value then
             spawn(function()
                 while AutoChestLoot do
-                    wait(0.5)
+                    wait(isMobile and 0.7 or 0.5)
                     for _, chest in pairs(workspace:GetChildren()) do
                         if chest.Name:match("Chest") or chest.Name:match("LootBox") or chest.Name:match("VolcanicChest") then
                             if CheckRemote("ChestLootEvent") then
@@ -265,6 +297,33 @@ MainTab:CreateButton({
     end
 })
 
+-- Мобильный бинд для телепорта
+if isMobile then
+    MainTab:CreateButton({
+        Name = "Тап для Телепорта к Сундуку",
+        Callback = function()
+            UserInputService.TouchTap:Connect(function(touchPositions, processed)
+                if not processed then
+                    local closest, dist = nil, math.huge
+                    for _, chest in pairs(workspace:GetChildren()) do
+                        if chest.Name:match("Chest") or chest.Name:match("LootBox") or chest.Name:match("VolcanicChest") then
+                            local d = (LocalPlayer.Character.HumanoidRootPart.Position - chest.Position).Magnitude
+                            if d < dist then
+                                dist = d
+                                closest = chest
+                            end
+                        end
+                    end
+                    if closest then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = closest.CFrame
+                        Log("Тап: Телепорт к сундуку!")
+                    end
+                end
+            end)
+        end
+    })
+end
+
 -- Авто-лут боссовых дропов
 MainTab:CreateToggle({
     Name = "Авто-Лут Боссов (Дропы)",
@@ -274,7 +333,7 @@ MainTab:CreateToggle({
         if Value then
             spawn(function()
                 while Value do
-                    wait(0.5)
+                    wait(isMobile and 0.7 or 0.5)
                     for _, drop in pairs(workspace:GetChildren()) do
                         if drop.Name:match("BossDrop") or drop.Name:match("Legendary") or drop.Name:match("VolcanicGem") then
                             drop.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
@@ -330,6 +389,31 @@ MainTab:CreateButton({
     end
 })
 
+-- Мобильный бинд для AOE
+if isMobile then
+    MainTab:CreateButton({
+        Name = "Тап для AOE Атаки",
+        Callback = function()
+            UserInputService.TouchTap:Connect(function(touchPositions, processed)
+                if not processed then
+                    for _, entity in pairs(workspace:GetChildren()) do
+                        if entity:FindFirstChild("Humanoid") and (entity.Name:match("Deer") or entity.Name:match("Ram") or entity.Name:match("Wolf") or entity.Name:match("Cultist") or entity.Name:match("King") or entity.Name:match("Volcanic")) then
+                            if CheckRemote("DamageEntity") then
+                                ReplicatedStorage.DamageEntity:FireServer(entity, math.huge)
+                            end
+                            entity.Humanoid.Health = 0
+                            if KillFlashes and CheckRemote("EffectEvent") then
+                                ReplicatedStorage.EffectEvent:FireServer("KillFlash", entity.Position, {Type = "Lightning", Color = Color3.fromRGB(0, 255, 255)})
+                            end
+                        end
+                    end
+                    Log("Тап: AOE атака! Все враги уничтожены!")
+                end
+            end)
+        end
+    })
+end
+
 -- Вырубка леса за 1 клик
 local FarmSection = MainTab:CreateSection("Фарм и Крафт")
 MainTab:CreateButton({
@@ -345,6 +429,27 @@ MainTab:CreateButton({
         Log("Весь лес вырублен! Ресурсы собраны!")
     end
 })
+
+-- Мобильный бинд для вырубки леса
+if isMobile then
+    MainTab:CreateButton({
+        Name = "Тап для Вырубки Леса",
+        Callback = function()
+            UserInputService.TouchTap:Connect(function(touchPositions, processed)
+                if not processed then
+                    for _, tree in pairs(workspace:GetChildren()) do
+                        if tree.Name:match("Tree") then
+                            if CheckRemote("TreeHarvestEvent") then
+                                ReplicatedStorage.TreeHarvestEvent:FireServer(tree, math.huge)
+                            end
+                        end
+                    end
+                    Log("Тап: Весь лес вырублен! Ресурсы собраны!")
+                end
+            end)
+        end
+    })
+end
 
 -- Авто-крафт базы
 MainTab:CreateToggle({
@@ -397,7 +502,7 @@ MainTab:CreateToggle({
         if Value then
             FarmThread = spawn(function()
                 while AutoFarm do
-                    wait(0.5)
+                    wait(isMobile and 0.7 or 0.5)
                     for _, tree in pairs(workspace:GetChildren()) do
                         if tree.Name:match("Tree") then
                             if CheckRemote("ChopTree") then
@@ -447,38 +552,61 @@ MainTab:CreateToggle({
     end
 })
 
--- Телепорт (Campfire, Deer)
-MainTab:CreateButton({
-    Name = "Телепорт к Campfire",
-    Callback = function()
-        if workspace:FindFirstChild("Campfire") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = workspace.Campfire.CFrame
-            Log("Телепорт к Campfire!")
+-- Fly (с мобильной поддержкой)
+local FlyThread
+MainTab:CreateToggle({
+    Name = "Fly (Space/Shift или Свайп на Мобиле)",
+    CurrentValue = false,
+    Flag = "FlyToggle",
+    Callback = function(Value)
+        FlyEnabled = Value
+        if Value and LocalPlayer.Character then
+            local BodyVelocity = Instance.new("BodyVelocity")
+            BodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+            BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            BodyVelocity.Parent = LocalPlayer.Character.HumanoidRootPart
+            FlyThread = RunService.Heartbeat:Connect(function()
+                if isMobile then
+                    local touches = UserInputService:GetTouchCurrentPosition()
+                    if touches then
+                        if touches.Y < 200 then
+                            BodyVelocity.Velocity = BodyVelocity.Velocity + Vector3.new(0, 50, 0)
+                        elseif touches.Y > 600 then
+                            BodyVelocity.Velocity = BodyVelocity.Velocity + Vector3.new(0, -50, 0)
+                        end
+                    end
+                else
+                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                        BodyVelocity.Velocity = BodyVelocity.Velocity + Vector3.new(0, 50, 0)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                        BodyVelocity.Velocity = BodyVelocity.Velocity + Vector3.new(0, -50, 0)
+                    end
+                end
+            end)
         else
-            LogError("Campfire not found!")
+            if FlyThread then FlyThread:Disconnect() end
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("BodyVelocity") then
+                LocalPlayer.Character.BodyVelocity:Destroy()
+            end
         end
     end
 })
 
-MainTab:CreateButton({
-    Name = "Телепорт к Ближайшему Deer",
-    Callback = function()
-        local closest, dist = nil, math.huge
-        for _, entity in pairs(workspace:GetChildren()) do
-            if entity.Name:match("Deer") then
-                local d = (LocalPlayer.Character.HumanoidRootPart.Position - entity.Position).Magnitude
-                if d < dist then
-                    dist = d
-                    closest = entity
-                end
-            end
+-- Speed Hack
+MainTab:CreateToggle({
+    Name = "Speed Hack (x3)",
+    CurrentValue = false,
+    Flag = "SpeedToggle",
+    Callback = function(Value)
+        SpeedHack = Value
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = Value and 48 or 16
         end
-        if closest then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = closest.CFrame
-            Log("Телепорт к Deer!")
-        else
-            LogError("Deer not found!")
-        end
+        LocalPlayer.CharacterAdded:Connect(function()
+            wait(1)
+            LocalPlayer.Character.Humanoid.WalkSpeed = SpeedHack and 48 or 16
+        end)
     end
 })
 
@@ -510,11 +638,8 @@ VisualsTab:CreateToggle({
         if Value then
             FullbrightThread = RunService.Heartbeat:Connect(function()
                 Lighting.Brightness = 2
-                Lighting.FogEnd = 100000
+                Lighting.FogEnd = isMobile and 5000 or 100000
                 Lighting.GlobalShadows = false
-                if isLowEndDevice then
-                    Lighting.FogEnd = 5000 -- Оптимизация для слабых устройств
-                end
             end)
         else
             if FullbrightThread then FullbrightThread:Disconnect() end
@@ -538,5 +663,366 @@ VisualsTab:CreateToggle({
                 if LocalPlayer.Character then
                     Camera.CameraType = Enum.CameraType.Scriptable
                     Camera.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 10), LocalPlayer.Character.HumanoidRootPart.Position)
+                end
+            end)
+        else
+            if ThirdPersonThread then ThirdPersonThread:Disconnect() end
+            Camera.CameraType = Enum.CameraType.Custom
+        end
+    end
+})
+
+-- China Hat
+local ChinaHatThread
+local ChinaHatPart
+VisualsTab:CreateToggle({
+    Name = "China Hat (Шляпа над Головой)",
+    CurrentValue = false,
+    Flag = "ChinaHatToggle",
+    Callback = function(Value)
+        ChinaHat = Value
+        if Value then
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
+                ChinaHatPart = Instance.new("Part")
+                ChinaHatPart.Size = Vector3.new(3, 0.2, 3)
+                ChinaHatPart.Position = LocalPlayer.Character.Head.Position + Vector3.new(0, 3, 0)
+                ChinaHatPart.Anchored = true
+                ChinaHatPart.CanCollide = false
+                ChinaHatPart.BrickColor = BrickColor.new("Really red")
+                ChinaHatPart.Parent = workspace
+                ChinaHatThread = RunService.Heartbeat:Connect(function()
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
+                        ChinaHatPart.Position = LocalPlayer.Character.Head.Position + Vector3.new(0, 3, 0)
+                        ChinaHatPart.CFrame = ChinaHatPart.CFrame * CFrame.Angles(0, math.rad(5), 0)
+                    end
+                end)
+            end
+        else
+            if ChinaHatThread then ChinaHatThread:Disconnect() end
+            if ChinaHatPart then ChinaHatPart:Destroy() end
+        end
+    end
+})
+
+-- FOV Changer
+VisualsTab:CreateSlider({
+    Name = "FOV Changer (60-120)",
+    Range = {60, 120},
+    Increment = 1,
+    Suffix = "FOV",
+    CurrentValue = 70,
+    Flag = "FOVSlider",
+    Callback = function(Value)
+        Camera.FieldOfView = Value
+        if CheckRemote("FOVEvent") then
+            ReplicatedStorage.FOVEvent:FireServer(Value)
+        end
+        Log("FOV изменён на " .. Value)
+    end
+})
+
+-- ESP
+local ESPTab = Window:CreateTab("ESP", 4483362458)
+local ESPSection = ESPTab:CreateSection("Настройки ESP")
+
+ESPTab:CreateToggle({
+    Name = "ESP (Включить Все)",
+    CurrentValue = false,
+    Flag = "ESPToggle",
+    Callback = function(Value)
+        ESPEnabled = Value
+        ESPEnemies = Value
+        ESPItems = Value
+        ESPKids = Value
+        ESPChests = Value
+        UpdateESP()
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "ESP Враги",
+    CurrentValue = false,
+    Flag = "ESPEnemiesToggle",
+    Callback = function(Value)
+        ESPEnemies = Value
+        UpdateESP()
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "ESP Предметы",
+    CurrentValue = false,
+    Flag = "ESPItemsToggle",
+    Callback = function(Value)
+        ESPItems = Value
+        UpdateESP()
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "ESP Дети",
+    CurrentValue = false,
+    Flag = "ESPKidsToggle",
+    Callback = function(Value)
+        ESPKids = Value
+        UpdateESP()
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "ESP Сундуки",
+    CurrentValue = false,
+    Flag = "ESPChestsToggle",
+    Callback = function(Value)
+        ESPChests = Value
+        UpdateESP()
+    end
+})
+
+ESPTab:CreateDropdown({
+    Name = "Цвет ESP",
+    Options = {"Красный", "Зелёный", "Синий", "Неон"},
+    CurrentOption = "Красный",
+    Flag = "ESPColorDropdown",
+    Callback = function(Option)
+        if Option == "Красный" then
+            ESPColor = Color3.fromRGB(255, 0, 0)
+        elseif Option == "Зелёный" then
+            ESPColor = Color3.fromRGB(0, 255, 0)
+        elseif Option == "Синий" then
+            ESPColor = Color3.fromRGB(0, 0, 255)
+        elseif Option == "Неон" then
+            ESPColor = Color3.fromRGB(0, 255, 255)
+        end
+        UpdateESP()
+    end
+})
+
+-- Функция обновления ESP
+local ESPConnections = {}
+local function UpdateESP()
+    for _, obj in pairs(workspace:GetChildren()) do
+        if ESPConnections[obj] then
+            ESPConnections[obj]:Destroy()
+            ESPConnections[obj] = nil
+        end
+        if ESPConnections[obj .. "_Billboard"] then
+            ESPConnections[obj .. "_Billboard"]:Destroy()
+            ESPConnections[obj .. "_Billboard"] = nil
+        end
+        if ESPEnabled then
+            if (ESPEnemies and (obj.Name:match("Deer") or obj.Name:match("Ram") or obj.Name:match("Wolf") or obj.Name:match("Cultist") or obj.Name:match("King") or obj.Name:match("Volcanic"))) or
+               (ESPItems and (obj.Name:match("Item") or obj.Name:match("Ammo") or obj.Name:match("Gun") or obj.Name:match("Food"))) or
+               (ESPKids and obj.Name:match("MissingChild")) or
+               (ESPChests and (obj.Name:match("Chest") or obj.Name:match("LootBox") or obj.Name:match("VolcanicChest"))) then
+                local Highlight = Instance.new("Highlight")
+                Highlight.Parent = obj
+                Highlight.FillColor = ESPColor
+                Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                ESPConnections[obj] = Highlight
+                if not isLowEndDevice then
+                    local Billboard = Instance.new("BillboardGui", obj)
+                    Billboard.Size = UDim2.new(0, 100, 0, 50)
+                    Billboard.StudsOffset = Vector3.new(0, 3, 0)
+                    local TextLabel = Instance.new("TextLabel", Billboard)
+                    TextLabel.Size = UDim2.new(1, 0, 1, 0)
+                    TextLabel.BackgroundTransparency = 1
+                    TextLabel.TextColor3 = ESPColor
+                    TextLabel.Text = obj.Name .. " (" .. math.floor((LocalPlayer.Character.HumanoidRootPart.Position - obj.Position).Magnitude) .. "m)"
+                    ESPConnections[obj .. "_Billboard"] = Billboard
+                end
+            end
+        end
+    end
+end
+
+-- Эффекты
+local EffectsTab = Window:CreateTab("Эффекты", 4483362458)
+local EffectsSection = EffectsTab:CreateSection("Настройки Эффектов")
+
+-- Trails
+local TrailThread
+local Trail
+EffectsTab:CreateToggle({
+    Name = "Trails (Следы при Движении)",
+    CurrentValue = false,
+    Flag = "TrailToggle",
+    Callback = function(Value)
+        TrailEnabled = Value
+        if Value then
+            if LocalPlayer.Character then
+                Trail = Instance.new("Trail")
+                Trail.Parent = LocalPlayer.Character.HumanoidRootPart
+                Trail.Attachment0 = Instance.new("Attachment", LocalPlayer.Character.HumanoidRootPart)
+                Trail.Attachment1 = Instance.new("Attachment", LocalPlayer.Character.HumanoidRootPart)
+                Trail.Attachment1.Position = Vector3.new(0, -2, 0)
+                Trail.Color = ColorSequence.new(Color3.fromRGB(255, 0, 0))
+                Trail.WidthScale = NumberSequence.new(isMobile and 0.3 or 0.5)
+                Trail.Lifetime = isMobile and 0.5 or 1
+                TrailThread = RunService.Heartbeat:Connect(function()
+                    if CheckRemote("EffectEvent") then
+                        ReplicatedStorage.EffectEvent:FireServer("Trail", LocalPlayer.Character.HumanoidRootPart.Position, {Color = Color3.fromRGB(255, 0, 0)})
+                    end
+                end)
+            end
+        else
+            if TrailThread then TrailThread:Disconnect() end
+            if Trail then Trail:Destroy() end
+        end
+    end
+})
+
+-- Shooting Effects
+local ShootingThread
+EffectsTab:CreateToggle({
+    Name = "Эффекты Стрельбы (Огонь/Молнии)",
+    CurrentValue = false,
+    Flag = "ShootingEffectsToggle",
+    Callback = function(Value)
+        ShootingEffects = Value
+        if Value then
+            ShootingThread = RunService.Heartbeat:Connect(function()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and CheckRemote("EffectEvent") then
+                    ReplicatedStorage.EffectEvent:FireServer("ShootEffect", LocalPlayer.Character.HumanoidRootPart.Position, {Type = "Fire", Color = Color3.fromRGB(255, 0, 0)})
+                end
+            end)
+        else
+            if ShootingThread then ShootingThread:Disconnect() end
+        end
+    end
+})
+
+-- Neon Aura
+local AuraThread
+EffectsTab:CreateToggle({
+    Name = "Неоновая Аура",
+    CurrentValue = false,
+    Flag = "NeonAuraToggle",
+    Callback = function(Value)
+        NeonAura = Value
+        if Value and not isLowEndDevice then
+            AuraThread = RunService.Heartbeat:Connect(function()
+                if LocalPlayer.Character then
+                    local AuraPart = Instance.new("Part")
+                    AuraPart.Size = Vector3.new(5, 5, 5)
+                    AuraPart.Transparency = 0.7
+                    AuraPart.BrickColor = BrickColor.new("Neon orange")
+                    AuraPart.Anchored = true
+                    AuraPart.CanCollide = false
+                    AuraPart.Position = LocalPlayer.Character.HumanoidRootPart.Position
+                    AuraPart.Parent = workspace
+                    TweenService:Create(AuraPart, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Transparency = 0.3}):Play()
+                    wait(isMobile and 1.5 or 2)
+                    AuraPart:Destroy()
+                end
+                if CheckRemote("EffectEvent") then
+                    ReplicatedStorage.EffectEvent:FireServer("Aura", LocalPlayer.Character.HumanoidRootPart.Position, {Color = Color3.fromRGB(255, 165, 0)})
+                end
+            end)
+        else
+            if AuraThread then AuraThread:Disconnect() end
+        end
+    end
+})
+
+-- Particle Effects
+local ParticleThread
+EffectsTab:CreateToggle({
+    Name = "Динамические Частицы (Искры/Дым)",
+    CurrentValue = false,
+    Flag = "ParticleEffectsToggle",
+    Callback = function(Value)
+        ParticleEffects = Value
+        if Value and not isLowEndDevice then
+            ParticleThread = RunService.Heartbeat:Connect(function()
+                if LocalPlayer.Character then
+                    local ParticleEmitter = Instance.new("ParticleEmitter")
+                    ParticleEmitter.Parent = LocalPlayer.Character.HumanoidRootPart
+                    ParticleEmitter.Rate = isMobile and 5 or 10
+                    ParticleEmitter.Lifetime = NumberRange.new(isMobile and 0.3 or 0.5, isMobile and 0.7 or 1)
+                    ParticleEmitter.Speed = NumberRange.new(5, 10)
+                    ParticleEmitter.Color = ColorSequence.new(Color3.fromRGB(255, 255, 0))
+                    if CheckRemote("EffectEvent") then
+                        ReplicatedStorage.EffectEvent:FireServer("Particles", LocalPlayer.Character.HumanoidRootPart.Position, {Type = "Sparkles"})
+                    end
+                    wait(isMobile and 1.5 or 1)
+                    ParticleEmitter:Destroy()
+                end
+            end)
+        else
+            if ParticleThread then ParticleThread:Disconnect() end
+        end
+    end
+})
+
+-- Shader Effects
+local ShaderThread
+EffectsTab:CreateToggle({
+    Name = "Шейдеры Персонажа (Хром/Металл)",
+    CurrentValue = false,
+    Flag = "ShaderEffectsToggle",
+    Callback = function(Value)
+        ShaderEffects = Value
+        if Value and not isLowEndDevice then
+            ShaderThread = RunService.Heartbeat:Connect(function()
+                if LocalPlayer.Character then
+                    for _, part in pairs(LocalPlayer.Character:GetChildren()) do
+                        if part:IsA("BasePart") then
+                            part.Material = Enum.Material.Neon
+                            part.BrickColor = BrickColor.new("Institutional white")
+                        end
+                    end
+                    if CheckRemote("EffectEvent") then
+                        ReplicatedStorage.EffectEvent:FireServer("Shader", LocalPlayer.Character.HumanoidRootPart.Position, {Type = "Chrome"})
+                    end
+                end
+            end)
+        else
+            if ShaderThread then ShaderThread:Disconnect() end
+            if LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Material = Enum.Material.Plastic
+                        part.BrickColor = BrickColor.new("Medium stone grey")
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- Kill Flashes
+EffectsTab:CreateToggle({
+    Name = "Вспышки при Убийстве (Огонь/Молнии)",
+    CurrentValue = false,
+    Flag = "KillFlashesToggle",
+    Callback = function(Value)
+        KillFlashes = Value
+    end
+})
+
+-- Misc Tab
+local MiscTab = Window:CreateTab("Разное", 4483362458)
+MiscTab:CreateTextbox({
+    Name = "Введи Код (VOLCANO, RAMKING и т.д.)",
+    PlaceholderText = "Код здесь",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        if CheckRemote("RedeemCode") then
+            ReplicatedStorage.RedeemCode:FireServer(Text)
+            Log("Код " .. Text .. " активирован!")
+        end
+    end
+})
+
+MiscTab:CreateParagraph({Title = "Инфо", Content = {
+    "GrokForestHub v1.7 | Delta v2.692+ | 27 Sep 2025",
+    "Коды: VOLCANO, RAMKING, GEMFOREST, CRAFTUPDATE, NIGHTSURVIVOR, CHESTHUNTER, BOSSLEGEND, VISUALGOD, FORESTKING, FOVMASTER, MOBILEGOD",
+    "Мобила: Тапай по кнопке 'GUI' для меню. VPN + Новый акк = Без бана. Доминация ждёт! 🌲🔥"
+}})
+
+Rayfield:LoadConfiguration()
+
+Log("GrokForestHub v1.7 загружен! GUI открыто автоматически. На мобиле тапни по 'GUI' в правом углу. Разноси лес! 🚀")Vector3.new(0, 5, 10), LocalPlayer.Character.HumanoidRootPart.Position)
                 end
             end)
